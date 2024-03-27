@@ -1,36 +1,104 @@
-# Welcome to Remix + Vite!
+# Welcome to Sanity + Remix + Preview Kit!
 
-📖 See the [Remix docs](https://remix.run/docs) and the [Remix Vite docs](https://remix.run/docs/en/main/future/vite) for details on supported features.
+This is a reproduction of an issue where a live query ignores the `pt::text` function used in a GROQ query.
 
-## Development
+The setup is in preview by default. Run the server:
 
-Run the Vite dev server:
-
-```shellscript
-npm run dev
+```shell
+pnpm i
+pnpm run dev
 ```
 
-## Deployment
+Loading the index route will show initialData like this:
 
-First, build your app for production:
-
-```sh
-npm run build
+```json
+  "initialData": {
+    "title": "Test entry",
+    "content": "Hello world!\n\nLorem ipsum dolor",
+    "isDraft": true,
+  }
 ```
 
-Then run the app in production mode:
+After the live query runs the `content` value will be:
 
-```sh
-npm start
+```json
+  "content": [
+    {
+      "_key": "4a5461396131",
+      "_type": "block",
+      "children": [
+        {
+          "_key": "3caa95456b4a",
+          "_type": "span",
+          "marks": [],
+          "text": "Hello "
+        },
+        {
+          "_key": "9ecd9e18b7c6",
+          "_type": "span",
+          "marks": [
+            "strong"
+          ],
+          "text": "world!"
+        }
+      ],
+      "markDefs": [],
+      "style": "h1"
+    },
+    {
+      "_key": "a26cd8072ba5",
+      "_type": "block",
+      "children": [
+        {
+          "_key": "a5665161a8b2",
+          "_type": "span",
+          "marks": [],
+          "text": "Lorem ipsum dolor"
+        }
+      ],
+      "markDefs": [],
+      "style": "normal"
+    }
+  ]
 ```
 
-Now you'll need to pick a host to deploy it to.
+## Schema
 
-### DIY
+The schema used is:
 
-If you're familiar with deploying Node applications, the built-in Remix app server is production-ready.
+```javascript
+  {
+    types: [
+      {
+        type: "document",
+        name: "post",
+        title: "Post",
+        fields: [
+          {
+            type: "string",
+            name: "title",
+            title: "Title",
+          },
+          {
+            name: "content",
+            title: "Content",
+            type: "array",
+            of: [{ type: "block" }],
+          },
+        ],
+      },
+    ],
+  }
+```
 
-Make sure to deploy the output of `npm run build`
+## Query
 
-- `build/server`
-- `build/client`
+The query used is:
+
+```
+  *[_type == "post"][0] {
+    title,
+    "content": pt::text(content),
+    "isDraft": defined(_originalId) && _originalId in path("drafts.**"),
+  }
+```
